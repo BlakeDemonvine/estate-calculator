@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基地分析儀表板</title>
+    <style>
+        /* (保留之前的 CSS) */
+        :root { --bg-color: #f3f4f6; --sidebar-bg: #ffffff; --card-bg: #ffffff; --primary: #6366f1; --primary-light: #e0e7ff; --text-dark: #1f2937; --text-gray: #6b7280; --border-color: #e5e7eb; --input-bg: #f9fafb; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', '微軟正黑體', sans-serif; }
+        body { background-color: var(--bg-color); display: flex; height: 100vh; overflow: hidden; color: var(--text-dark); }
+        .sidebar { width: 380px; background-color: var(--sidebar-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 24px; overflow-y: auto; box-shadow: 4px 0 15px rgba(0,0,0,0.03); z-index: 10; }
+        
+        /* 修改：讓 Header 看起來可以點擊 */
+        .brand-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: opacity 0.2s; }
+        .brand-header:hover { opacity: 0.7; }
+
+        .brand-header img { height: 40px; width: auto; }
+        .brand-header h2 { font-size: 1.2rem; color: var(--text-dark); font-weight: 700; }
+        .section-title { font-size: 0.85rem; font-weight: 700; color: var(--text-gray); text-transform: uppercase; letter-spacing: 0.05em; margin: 24px 0 12px 0; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+        .input-group { margin-bottom: 16px; }
+        .input-group label { display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 6px; color: var(--text-dark); }
+        .input-wrapper { position: relative; display: flex; align-items: center; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 8px; background-color: var(--input-bg); font-size: 0.95rem; transition: all 0.2s; }
+        input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); background-color: #fff; }
+        .unit { position: absolute; right: 12px; font-size: 0.85rem; color: var(--text-gray); pointer-events: none; }
+        .input-blue { border-left: 4px solid #60a5fa; }
+        .main { flex: 1; padding: 32px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        .card { background: var(--card-bg); border-radius: 16px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid var(--border-color); }
+        .card-title { font-size: 0.9rem; color: var(--text-gray); margin-bottom: 8px; }
+        .card-value { font-size: 2.2rem; font-weight: 700; color: var(--text-dark); }
+        .card-value small { font-size: 1rem; font-weight: 500; color: var(--text-gray); margin-left: 4px; }
+        .card-highlight { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; border: none; }
+        .card-highlight .card-title { color: rgba(255,255,255,0.8); }
+        .card-highlight .card-value { color: white; }
+        .card-highlight .card-value small { color: rgba(255,255,255,0.8); }
+        .table-container { background: var(--card-bg); border-radius: 16px; border: 1px solid var(--border-color); overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+        .data-table th, .data-table td { padding: 14px 24px; border-bottom: 1px solid var(--border-color); text-align: right; }
+        .data-table th:first-child, .data-table td:first-child { text-align: left; font-weight: 500; color: var(--text-dark); width: 35%; }
+        .data-table th:last-child, .data-table td:last-child { width: 15%; color: var(--text-gray); font-family: 'Courier New', Courier, monospace; }
+        .data-table tr:hover { background-color: #f9fafb; }
+        .row-highlight { background-color: #fffbeb; font-weight: 700; }
+        .row-total { background-color: #eff6ff; font-weight: 700; color: var(--primary); }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; background-color: #e0e7ff; color: #4338ca; margin-bottom: 10px; }
+        .status-saved { color: green; font-size: 0.8rem; margin-left: 10px; transition: opacity 0.5s; opacity: 0; }
+        
+        /* 新增按鈕樣式 */
+        .btn-copy {
+            background-color: white;
+            border: 1px solid #d1d5db;
+            color: #374151;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-copy:hover {
+            background-color: #f3f4f6;
+            border-color: #9ca3af;
+        }
+        .btn-copy:active {
+            transform: translateY(1px);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="brand-header" onclick="window.location.href='index.html'" title="點擊返回檔案列表">
+            <img src="logo.png" alt="Logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'"> 
+            <span style="display:none; font-size:1.5rem;">◆</span>
+            <h2>基地分析參數</h2>
+        </div>
+
+        <div class="input-group">
+            <label>檔案名稱</label>
+            <input type="text" id="in_filename" class="input-blue" oninput="updateData('filename', this.value)">
+        </div>
+        
+        <div class="section-title">基本資料</div>
+        <div class="input-group">
+            <label>案名</label>
+            <input type="text" id="in_case_name" class="input-blue" oninput="updateData('基本資料.案名', this.value)">
+        </div>
+        <div class="input-group">
+            <label>使用分區</label>
+            <input type="text" id="in_zone" class="input-blue" oninput="updateData('基本資料.使用分區', this.value)">
+        </div>
+
+        <div class="section-title">基地條件</div>
+        <div class="input-group">
+            <label>基地面積 (m²)</label>
+            <div class="input-wrapper">
+                <input type="number" id="in_area" class="input-blue" oninput="updateData('基地條件.基地面積', this.value)">
+                <span class="unit">m²</span>
+            </div>
+        </div>
+        <div class="input-group">
+            <label>面前道路寬度 (M)</label>
+            <div class="input-wrapper">
+                <input type="number" id="in_road" class="input-blue" oninput="updateData('基地條件.路寬', this.value)">
+                <span class="unit">M</span>
+            </div>
+        </div>
+
+        <div class="section-title">法規與獎勵</div>
+        <div class="input-group">
+            <label>法定建蔽率 (%)</label>
+            <div class="input-wrapper">
+                <input type="number" id="in_coverage" class="input-blue" oninput="updateData('法規參數.建蔽率', this.value)">
+                <span class="unit">%</span>
+            </div>
+        </div>
+        <div class="input-group">
+            <label>法定容積率 (%)</label>
+            <div class="input-wrapper">
+                <input type="number" id="in_far" class="input-blue" oninput="updateData('法規參數.容積率', this.value)">
+                <span class="unit">%</span>
+            </div>
+        </div>
+        <div class="input-group">
+            <label>容移獎勵面積 (m²)</label>
+            <div class="input-wrapper">
+                <input type="number" id="in_bonus_transfer" class="input-blue" oninput="updateData('法規參數.容移獎勵', this.value)">
+                <span class="unit">m²</span>
+            </div>
+        </div>
+
+        <div class="section-title">建築規劃係數</div>
+        <div class="input-group">
+            <label>銷售係數</label>
+            <div class="input-wrapper">
+                <input type="number" id="in_sales_coeff" class="input-blue" step="0.01" oninput="updateData('建築規劃.銷售係數', this.value)">
+                <span class="unit">倍</span>
+            </div>
+        </div>
+        <div class="input-group">
+            <label>屋突層面積 (m²)</label>
+            <div class="input-wrapper">
+                <input type="number" id="in_roof_area" class="input-blue" oninput="updateData('建築規劃.屋突面積', this.value)">
+                <span class="unit">m²</span>
+            </div>
+        </div>
+        <div class="input-group">
+            <label>地下層樓地板面積 (m²)</label>
+            <div class="input-wrapper">
+                <input type="number" id="in_basement_area" class="input-blue" oninput="updateData('建築規劃.地下室面積', this.value)">
+                <span class="unit">m²</span>
+            </div>
+        </div>
+        <div class="input-group">
+            <label>規劃樓層數</label>
+            <div class="input-wrapper">
+                <input type="number" id="in_floors" class="input-blue" oninput="updateData('建築規劃.樓層數', this.value)">
+                <span class="unit">層</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="main">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h1 id="main-title">載入中...</h1>
+            </div>
+            <div style="display:flex; align-items:center;">
+                <span class="badge">Live Edit Mode</span>
+                <span id="save-status" class="status-saved">已儲存</span>
+                
+                <button class="btn-copy" onclick="copyDataObject()">
+                    📋 複製 Object
+                </button>
+            </div>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="card card-highlight">
+                <div class="card-title">總銷坪數</div>
+                <div class="card-value" id="kpi_total_sales">0 <small>坪</small></div>
+            </div>
+            <div class="card">
+                <div class="card-title">坪效</div>
+                <div class="card-value" style="color:var(--primary)" id="kpi_efficiency">0 <small>倍</small></div>
+            </div>
+            <div class="card">
+                <div class="card-title">允建總容積面積</div>
+                <div class="card-value" id="kpi_total_allowed">0 <small>m²</small></div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr style="background:#f9fafb;">
+                        <th>分析項目 (Item)</th>
+                        <th>面積 (m²)</th>
+                        <th>面積 (坪)</th>
+                        <th>備註 / 比例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>可用基地面積</td><td id="t_base_m2">0</td><td id="t_base_ping">0</td><td></td></tr>
+                    <tr><td>法定騎樓面積</td><td>0.0</td><td>0.00</td><td></td></tr>
+                    <tr><td>法定建築面積</td><td id="t_footprint_m2">0</td><td id="t_footprint_ping">0</td><td id="r_coverage">0%</td></tr>
+                    <tr><td>法定容積面積 ΔFA</td><td id="t_legal_fa_m2">0</td><td id="t_legal_fa_ping">0</td><td id="r_far">0%</td></tr>
+                    <tr style="color: #e11d48;"><td>容移獎勵</td><td id="t_bonus_m2">0</td><td id="t_bonus_ping">0</td><td></td></tr>
+                    <tr><td>獎勵停車面積 ΔFA''</td><td>0.0</td><td>0.00</td><td></td></tr>
+                    <tr><td>都市更新獎勵 ΔFA'''</td><td>0.0</td><td>0.00</td><td></td></tr>
+                    <tr class="row-total"><td>允建總容積面積 (ΣFA)</td><td id="t_allowed_fa_m2">0</td><td id="t_allowed_fa_ping">0</td><td id="r_total_allowed"></td></tr>
+                    <tr><td>機電/梯間等免計</td><td id="t_mech_m2">0</td><td id="t_mech_ping">0</td><td id="r_mech"></td></tr>
+                    <tr><td>梯廳免計容積</td><td id="t_stair_m2">0</td><td id="t_stair_ping">0</td><td id="r_stair"></td></tr>
+                    <tr><td>陽台免計容積</td><td id="t_balcony_m2">0</td><td id="t_balcony_ping">0</td><td id="r_balcony"></td></tr>
+                    <tr><td>屋突層面積</td><td id="t_roof_m2">0</td><td id="t_roof_ping">0</td><td></td></tr>
+                    <tr class="row-highlight"><td>地上層樓地板面積總計</td><td id="t_above_ground_m2">0</td><td id="t_above_ground_ping">0</td><td></td></tr>
+                    <tr><td>地下層開挖率</td><td colspan="2" style="text-align:center">法定 36% / 實際 75.1%</td><td></td></tr>
+                    <tr><td>原地基建築容積面積</td><td>0.0</td><td>0.00</td><td></td></tr>
+                    <tr class="row-highlight"><td>地下層樓地板面積總計</td><td id="t_basement_m2">0</td><td id="t_basement_ping">0</td><td></td></tr>
+                    <tr class="row-highlight"><td>總樓地板面積 (GFA)</td><td id="t_gfa_m2">0</td><td id="t_gfa_ping">0</td><td></td></tr>
+                    <tr style="background-color: #fef08a; border: 2px solid #eab308; color: #a16207;"><td>總銷坪數</td><td id="t_sales_m2" style="font-weight:bold;">0</td><td id="t_sales_ping" style="font-size:1.2rem; font-weight:bold;">0</td><td id="t_coeff_display" style="font-weight:bold; color:red">0</td></tr>
+                    <tr><td>坪效</td><td colspan="2" id="t_efficiency" style="text-align:center; color:blue; font-weight:bold;">0</td><td></td></tr>
+                    <tr><td>法定停車數 (機械/平面)</td><td colspan="2" style="text-align:center">汽車 <span id="t_car_legal">0</span> 輛 / 機車 <span id="t_moto_legal">0</span> 輛</td><td></td></tr>
+                    <tr><td>規劃地上樓層數/總戶數</td><td colspan="2" style="text-align:center"><span id="t_plan_floors">0</span> 層 / <span id="t_plan_units">0</span> 戶</td><td></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const LS_KEY = 'landAnalysisFiles';
+        let currentDocId = null;
+        let allDocs = [];
+        let currentDoc = null;
+
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            currentDocId = urlParams.get('id');
+
+            if (!currentDocId) {
+                alert("無效的檔案 ID，請從管理平台開啟。");
+                window.close();
+                return;
+            }
+
+            loadDataFromLS();
+        };
+
+        function loadDataFromLS() {
+            const raw = localStorage.getItem(LS_KEY);
+            if (raw) {
+                allDocs = JSON.parse(raw);
+                currentDoc = allDocs.find(d => d.id === currentDocId);
+
+                if (currentDoc) {
+                    populateUI(currentDoc);
+                    calculate(); 
+                } else {
+                    alert("找不到該檔案，可能已被刪除。");
+                }
+            }
+        }
+
+        function populateUI(doc) {
+            const data = doc.data;
+            document.getElementById('in_filename').value = doc.filename; 
+            document.getElementById('in_case_name').value = data['基本資料']['案名'];
+            document.getElementById('in_zone').value = data['基本資料']['使用分區'];
+            document.getElementById('in_area').value = data['基地條件']['基地面積'];
+            document.getElementById('in_road').value = data['基地條件']['路寬'];
+            document.getElementById('in_coverage').value = data['法規參數']['建蔽率'];
+            document.getElementById('in_far').value = data['法規參數']['容積率'];
+            document.getElementById('in_bonus_transfer').value = data['法規參數']['容移獎勵'];
+            document.getElementById('in_sales_coeff').value = data['建築規劃']['銷售係數'];
+            document.getElementById('in_roof_area').value = data['建築規劃']['屋突面積'];
+            document.getElementById('in_basement_area').value = data['建築規劃']['地下室面積'];
+            document.getElementById('in_floors').value = data['建築規劃']['樓層數'];
+            
+            document.getElementById('main-title').innerText = doc.filename;
+        }
+
+        function updateData(path, value) {
+            if (!currentDoc) return;
+
+            let finalValue = value;
+            if (path !== 'filename' && path !== '基本資料.案名' && path !== '基本資料.使用分區') {
+                finalValue = parseFloat(value) || 0;
+            }
+
+            if (path === 'filename') {
+                currentDoc.filename = finalValue;
+                currentDoc.data['檔案名稱'] = finalValue;
+                document.getElementById('main-title').innerText = finalValue;
+            } else {
+                const parts = path.split('.');
+                currentDoc.data[parts[0]][parts[1]] = finalValue;
+            }
+
+            const d = new Date();
+            currentDoc.lastModified = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+            saveToLS();
+            calculate();
+        }
+
+        function saveToLS() {
+            const index = allDocs.findIndex(d => d.id === currentDocId);
+            if (index !== -1) {
+                allDocs[index] = currentDoc;
+                localStorage.setItem(LS_KEY, JSON.stringify(allDocs));
+                
+                const status = document.getElementById('save-status');
+                status.style.opacity = 1;
+                setTimeout(() => { status.style.opacity = 0; }, 1000);
+            }
+        }
+
+        // 3. 修改：新增複製 Object 的功能
+        function copyDataObject() {
+            if (!currentDoc) return;
+            // 將目前的檔案資料轉為 JSON 字串 (排版縮排 4 空格比較好看)
+            const dataStr = JSON.stringify(currentDoc.data, null, 4);
+            
+            // 寫入剪貼簿
+            navigator.clipboard.writeText(dataStr).then(() => {
+                alert("✅ 已複製檔案 Object！\n\n您可以回到首頁，點擊「匯入 Object」並貼上此內容來備份或分享。");
+            }).catch(err => {
+                console.error('複製失敗: ', err);
+                alert("複製失敗，請手動選取複製。");
+            });
+        }
+
+        function calculate() {
+            const areaM2 = parseFloat(document.getElementById('in_area').value) || 0;
+            const coveragePct = parseFloat(document.getElementById('in_coverage').value) || 0;
+            const farPct = parseFloat(document.getElementById('in_far').value) || 0;
+            const bonusTransferM2 = parseFloat(document.getElementById('in_bonus_transfer').value) || 0;
+            const salesCoeff = parseFloat(document.getElementById('in_sales_coeff').value) || 1.62;
+            const roofAreaM2 = parseFloat(document.getElementById('in_roof_area').value) || 0;
+            const basementAreaM2 = parseFloat(document.getElementById('in_basement_area').value) || 0;
+            const planFloors = parseFloat(document.getElementById('in_floors').value) || 11;
+            const m2ToPing = 0.3025;
+
+            const areaPing = areaM2 * m2ToPing;
+            const legalFootprintM2 = areaM2 * (coveragePct / 100);
+            const legalFAM2 = areaM2 * (farPct / 100);
+            const allowedTotalFAM2 = legalFAM2 + bonusTransferM2;
+            const calc_Mech = allowedTotalFAM2 * 0.15;
+            const calc_Stair = 509.2 * (allowedTotalFAM2 / 5882.8); 
+            const calc_Balcony = 582.0 * (allowedTotalFAM2 / 5882.8); 
+            const aboveGroundTotalM2 = allowedTotalFAM2 + calc_Mech + calc_Stair + calc_Balcony + roofAreaM2;
+            const totalGFAM2 = aboveGroundTotalM2 + basementAreaM2;
+            const totalSalesM2 = allowedTotalFAM2 * salesCoeff; 
+            const totalSalesPing = totalSalesM2 * m2ToPing;
+            const efficiency = areaPing > 0 ? (totalSalesPing / areaPing) : 0;
+            const carVal = allowedTotalFAM2 * 0.00773;
+            const motoVal = 73 * (allowedTotalFAM2 / 5882.8);
+            const ratioTotalAllowed = areaM2 > 0 ? (allowedTotalFAM2 / areaM2) * 100 : 0;
+            const ratioMech = allowedTotalFAM2 > 0 ? (calc_Mech / allowedTotalFAM2) * 100 : 0;
+            const ratioStair = allowedTotalFAM2 > 0 ? (calc_Stair / allowedTotalFAM2) * 100 : 0;
+            const ratioBalcony = allowedTotalFAM2 > 0 ? (calc_Balcony / allowedTotalFAM2) * 100 : 0;
+
+            const setVal = (id, val, isPing = false) => {
+                const el = document.getElementById(id);
+                if(el) el.innerText = val.toLocaleString('en-US', {minimumFractionDigits: isPing? 2 : 1, maximumFractionDigits: 2});
+            };
+            setVal('kpi_total_sales', totalSalesPing, true);
+            setVal('kpi_efficiency', efficiency, true);
+            setVal('kpi_total_allowed', allowedTotalFAM2);
+            setVal('t_base_m2', areaM2);
+            setVal('t_base_ping', areaPing, true);
+            setVal('t_footprint_m2', legalFootprintM2);
+            setVal('t_footprint_ping', legalFootprintM2 * m2ToPing, true);
+            document.getElementById('r_coverage').innerText = coveragePct.toFixed(2) + "%";
+            setVal('t_legal_fa_m2', legalFAM2);
+            setVal('t_legal_fa_ping', legalFAM2 * m2ToPing, true);
+            document.getElementById('r_far').innerText = farPct.toFixed(2) + "%";
+            setVal('t_bonus_m2', bonusTransferM2);
+            setVal('t_bonus_ping', bonusTransferM2 * m2ToPing, true);
+            setVal('t_allowed_fa_m2', allowedTotalFAM2);
+            setVal('t_allowed_fa_ping', allowedTotalFAM2 * m2ToPing, true);
+            document.getElementById('r_total_allowed').innerText = ratioTotalAllowed.toFixed(2) + "%";
+            setVal('t_mech_m2', calc_Mech);
+            setVal('t_mech_ping', calc_Mech * m2ToPing, true);
+            document.getElementById('r_mech').innerText = ratioMech.toFixed(2) + "%";
+            setVal('t_stair_m2', calc_Stair);
+            setVal('t_stair_ping', calc_Stair * m2ToPing, true);
+            document.getElementById('r_stair').innerText = ratioStair.toFixed(2) + "%";
+            setVal('t_balcony_m2', calc_Balcony);
+            setVal('t_balcony_ping', calc_Balcony * m2ToPing, true);
+            document.getElementById('r_balcony').innerText = ratioBalcony.toFixed(2) + "%";
+            setVal('t_roof_m2', roofAreaM2);
+            setVal('t_roof_ping', roofAreaM2 * m2ToPing, true);
+            setVal('t_above_ground_m2', aboveGroundTotalM2);
+            setVal('t_above_ground_ping', aboveGroundTotalM2 * m2ToPing, true);
+            setVal('t_basement_m2', basementAreaM2);
+            setVal('t_basement_ping', basementAreaM2 * m2ToPing, true);
+            setVal('t_gfa_m2', totalGFAM2);
+            setVal('t_gfa_ping', totalGFAM2 * m2ToPing, true);
+            setVal('t_sales_m2', totalSalesM2);
+            setVal('t_sales_ping', totalSalesPing, true);
+            document.getElementById('t_coeff_display').innerText = salesCoeff.toFixed(2);
+            setVal('t_efficiency', efficiency, true);
+            setVal('t_car_legal', Math.floor(carVal));
+            setVal('t_moto_legal', Math.floor(motoVal));
+            document.getElementById('t_plan_floors').innerText = planFloors;
+            document.getElementById('t_plan_units').innerText = Math.max(0, planFloors * 2 - 2); 
+        }
+    </script>
+</body>
+</html>
