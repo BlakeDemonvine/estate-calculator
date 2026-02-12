@@ -35,8 +35,25 @@
         .card-highlight .card-title { color: rgba(255,255,255,0.8); }
         .card-highlight .card-value { color: white; }
         .card-highlight .card-value small { color: rgba(255,255,255,0.8); }
-        .table-container { background: var(--card-bg); border-radius: 16px; border: 1px solid var(--border-color); overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
-        .data-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+        /*.table-container { background: var(--card-bg); border-radius: 16px; border: 1px solid var(--border-color); overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .data-table {overflow-x: auto;  width: 100%; border-collapse: collapse; font-size: 0.95rem;}
+        */
+        .table-container {
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            overflow-x: auto;
+            width: 100%;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            min-width: 600px;
+            white-space: nowrap;
+        }
         .data-table th, .data-table td { padding: 14px 24px; border-bottom: 1px solid var(--border-color); text-align: right; }
         .data-table th:first-child, .data-table td:first-child { text-align: left; font-weight: 500; color: var(--text-dark); width: 35%; }
         .data-table th:last-child, .data-table td:last-child { width: 15%; color: var(--text-gray); font-family: 'Courier New', Courier, monospace; }
@@ -68,6 +85,7 @@
         .btn-copy:active {
             transform: translateY(1px);
         }
+        
     </style>
 </head>
 <body>
@@ -170,6 +188,7 @@
                 <h1 id="main-title">載入中...</h1>
             </div>
             <div style="display:flex; align-items:center;">
+
                 
                 <button class="btn-copy" onclick="copyDataObject()">
                     📋 複製 Object
@@ -410,5 +429,4 @@
         }
     </script>
 </body>
-
 </html>
